@@ -370,13 +370,12 @@ public class BattleManager : MonoBehaviour
     /// 获取角色的移动范围
     /// </summary>
     /// <param name="role"></param>
-    /// <param name="movedStep">移动过的格子数</param>
-    public List<BattleBlockVector> GetMoveRange(RoleInstance role, int movedStep)
+    public List<BattleBlockVector> GetMoveRange(RoleInstance role)
     {
         //获得角色移动能力
         int moveAbility = role.GetMoveAbility();
         //绘制周围的移动格子
-        var blockList = rangeLogic.GetMoveRange(role.Pos.X, role.Pos.Y, moveAbility - movedStep);
+        var blockList = rangeLogic.GetMoveRange(role.Pos.X, role.Pos.Y, moveAbility);
         return blockList;
     }
 

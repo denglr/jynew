@@ -27,21 +27,16 @@ public class BattleboxManager : MonoBehaviour
     public float m_DetechRadius = 0.8f;
     public float m_SpriteToGroundHeight = 0.01f;
     public Color m_InvalidColor = new Color(1,1,1,0.2f);
-    public const float BATTLEBLOCK_DECAL_ALPHA = 0.4f;
 
-    private SpriteRenderer _BlockPrefab;
+    private SpriteRenderer m_BlockPrefab;
 
     [HideInInspector]
     public BattleboxDataset m_Dataset;
 
-    private Collider[] _colliders;
+    private Collider[] m_colliders;
 
     //存储逻辑数据
-    private List<BattleBlockData> _battleBlocks = new List<BattleBlockData>();
-    
-    //mouseover显示攻击范围的格子
-    private List<BattleBlockData> _rangeLayerBlocks = new List<BattleBlockData>();
-    
+    private List<BattleBlockData> battleBlocks = new List<BattleBlockData>();
     private GameObject _parent;
 
     // Use this for initialization
@@ -63,8 +58,8 @@ public class BattleboxManager : MonoBehaviour
 
     private void InitCollider()
     {
-        _colliders = GetComponentsInChildren<Collider>();
-        foreach (var col in _colliders)
+        m_colliders = GetComponentsInChildren<Collider>();
+        foreach (var col in m_colliders)
         {
             var mesh = col.GetComponent<MeshCollider>();
             if (mesh != null) mesh.convex = true;
@@ -73,8 +68,8 @@ public class BattleboxManager : MonoBehaviour
 
     private Bounds GetBounds()
     {
-        var bound = _colliders[0].bounds;
-        foreach (var mCollider in _colliders)
+        var bound = m_colliders[0].bounds;
+        foreach (var mCollider in m_colliders)
         {
             bound.Encapsulate(mCollider.bounds);
         }
@@ -83,7 +78,7 @@ public class BattleboxManager : MonoBehaviour
 
     public bool ColliderContain(Vector3 pos)
     {
-        foreach (var mCollider in _colliders)
+        foreach (var mCollider in m_colliders)
         {
             var temp = mCollider.ClosestPoint(pos);
             if (Vector3.Distance(pos, temp) < 1e-6) return true;
@@ -124,7 +119,7 @@ public class BattleboxManager : MonoBehaviour
 
     public bool CheckSize()
     {
-        if (_colliders == null || _colliders.Length == 0)
+        if (m_colliders == null || m_colliders.Length == 0)
         {
             Debug.LogError($"没有找到子碰撞盒，无法初始化战斗盒子");
             return false;
@@ -152,7 +147,7 @@ public class BattleboxManager : MonoBehaviour
     {
         m_Dataset = null;
         InitCollider();
-        if (_colliders == null || _colliders.Length == 0)
+        if (m_colliders == null || m_colliders.Length == 0)
         {
             Debug.LogError($"没有找到子碰撞盒，无法初始化战斗盒子");
             return;
@@ -208,7 +203,7 @@ public class BattleboxManager : MonoBehaviour
 
     public List<BattleBlockData> GetBattleBlocks()
     {
-        return _battleBlocks;
+        return battleBlocks;
     }
 
     public System.Numerics.Vector2 GetXYIndex(float x, float z)
@@ -252,7 +247,7 @@ public class BattleboxManager : MonoBehaviour
 
     public void ShowAllValidBlocks()
     {
-        foreach (var block in _battleBlocks)
+        foreach (var block in battleBlocks)
         {
             if(block.BoxBlock.IsValid)
                 block.Show();
@@ -263,7 +258,7 @@ public class BattleboxManager : MonoBehaviour
 
     public void ShowAllBlocks()
     {
-        foreach (var block in _battleBlocks)
+        foreach (var block in battleBlocks)
         {
             block.Show();
         }
@@ -271,15 +266,7 @@ public class BattleboxManager : MonoBehaviour
 
     public void HideAllBlocks()
     {
-        foreach (var block in _battleBlocks)
-        {
-            block.Hide();
-        }
-    }
-
-    public void HideAllRangeBlocks()
-    {
-        foreach (var block in _rangeLayerBlocks)
+        foreach (var block in battleBlocks)
         {
             block.Hide();
         }
@@ -287,12 +274,7 @@ public class BattleboxManager : MonoBehaviour
 
     public BattleBlockData GetBlockData(int xindex, int yindex)
     {
-        return _battleBlocks.FirstOrDefault(x => x.BattlePos.X == xindex && x.BattlePos.Y == yindex);
-    }
-    
-    public BattleBlockData GetRangelockData(int xindex, int yindex)
-    {
-        return _rangeLayerBlocks.FirstOrDefault(x => x.BattlePos.X == xindex && x.BattlePos.Y == yindex);
+        return battleBlocks.FirstOrDefault(x => x.BattlePos.X == xindex && x.BattlePos.Y == yindex);
     }
 
     public bool Exist(int xindex, int yindex)
@@ -308,12 +290,11 @@ public class BattleboxManager : MonoBehaviour
     //清除所有格子（所有格子的parent为当前box）
     public void ClearAllBlocks()
     {
-        foreach (var block in _battleBlocks)
+        foreach (var block in battleBlocks)
         {
             DestroyImmediate(block.gameObject);
         }
-        _battleBlocks.Clear();
-        _rangeLayerBlocks.Clear();
+        battleBlocks.Clear();
 
         var parent = FindOrCreateBlocksParent();
         if (parent == null) return;
@@ -328,7 +309,7 @@ public class BattleboxManager : MonoBehaviour
     }
 
     //绘制战斗格子，默认不显示
-    void DrawBattleBlock(Vector3 pos, Color c, int x, int y, Vector3 normal, BattleboxBlock boxBlock, bool initRangeBlocks = false)
+    void DrawBattleBlock(Vector3 pos, Color c, int x, int y, Vector3 normal, BattleboxBlock boxBlock)
     {
         var parent = FindOrCreateBlocksParent();
         
@@ -336,11 +317,6 @@ public class BattleboxManager : MonoBehaviour
         var obj = EasyDecal.Project(block, pos, Quaternion.identity);
         obj.Quality = 2;
         obj.Distance = 0.05f;
-        if (initRangeBlocks)
-        {
-            obj.Distance = 0.07f;
-        }
-        
         obj.transform.SetParent(parent.transform, false);
 
         var bPos = new BattleBlockVector(x, y);
@@ -349,16 +325,7 @@ public class BattleboxManager : MonoBehaviour
         bbd.WorldPos = pos;
         bbd.gameObject = obj.gameObject;
         bbd.BoxBlock = boxBlock;
-        
-        if (initRangeBlocks)
-        {
-            _rangeLayerBlocks.Add(bbd);
-            obj.DecalRenderer.material.SetColor("_TintColor", new Color(0, 0, 1, BATTLEBLOCK_DECAL_ALPHA));
-        }
-        else
-        {
-            _battleBlocks.Add(bbd);    
-        }
+        battleBlocks.Add(bbd);
     }
 
     public void ChangeValid(int xindex, int yindex)
@@ -402,7 +369,6 @@ public class BattleboxManager : MonoBehaviour
             var pos = new Vector3(data.WorldPosX, data.WorldPosY, data.WorldPosZ);
             var normal = new Vector3(data.NormalX, data.NormalY, data.NormalZ);
             DrawBattleBlock(pos, data.IsValid ? Color.white : m_InvalidColor, b.X, b.Y, normal, data);
-            DrawBattleBlock(pos, Color.blue, b.X, b.Y, normal, data, true);
         }
         //for (int i = centerX - range; i < centerX + range; i++)
         //{
@@ -442,13 +408,19 @@ public class BattleboxManager : MonoBehaviour
         }
     }
 
-    public void SetAllBlockColor(Color color, bool isRangeBlocks = false)
+    public void SetAllBlockColor(Color color)
     {
-        foreach (var block in isRangeBlocks ? _rangeLayerBlocks : _battleBlocks)
+        foreach (var block in battleBlocks)
         {
-            block.gameObject.GetComponent<EasyDecal>().DecalRenderer.material.SetColor("_TintColor", color); 
-            //block.gameObject.GetComponent<EasyDecal>().DecalMaterial.SetColor("_TintColor", color);
+            block.gameObject.GetComponent<EasyDecal>().DecalMaterial.SetColor("_TintColor", color);
         }
+    }
+
+    public void SetBlockColor(int xindex, int yindex, Color color)
+    {
+        //if (!Exist(xindex, yindex)) return;
+        //var block = GetBlockData(xindex, yindex);
+        //block.gameObject.GetComponent<SpriteRenderer>().color = color;
     }
 
     private List<BattleBlockVector> _battleBoxBlockList = new List<BattleBlockVector>();
